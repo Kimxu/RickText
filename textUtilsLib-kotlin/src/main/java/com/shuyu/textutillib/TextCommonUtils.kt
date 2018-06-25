@@ -198,51 +198,40 @@ object TextCommonUtils {
      */
     fun getTopicText(context: Context, listTopic: List<TopicModel>?, content: String, textView: ITextViewShow?, clickable: Boolean,
                      color: Int, spanTopicCallBack: SpanTopicCallBack?): Spannable {
-
         if (listTopic == null || listTopic.isEmpty())
             return SpannableString(content)
         val spannableString = SpannableString(content)
         var indexStart = 0
         val lenght = content.length
         var hadHighLine = false
-        val map = HashMap<String, String>()
         var i = 0
         while (i < listTopic.size) {
-            var index = content.indexOf("#" + listTopic[i].topicName + "#", indexStart) + 1
-            if (index < 0 && indexStart > 0) {
-                index = content.indexOf(listTopic[i].topicName)
-                if (map.containsKey("" + index)) {
-                    val tmpIndexStart = if (indexStart < lenght) Integer.parseInt(map["" + index]) else lenght - 1
-                    if (tmpIndexStart != indexStart) {
-                        indexStart = tmpIndexStart
-                        i--
-                        i++
-                        continue
+            while (true) {
+                val index = content.indexOf("#" + listTopic[i].topicName + "#", indexStart) + 1
+                if (index > 0) {
+                    val mathStart = index - 1
+                    val indexEnd = index + listTopic[i].topicName.length
+                    val hadAt = "#" == content.substring(mathStart, index) && "#" == content.substring(indexEnd, indexEnd + 1)
+                    val matchEnd = indexEnd + 1
+                    if (hadAt && (matchEnd <= lenght || indexEnd == lenght)) {
+                        if (indexEnd >= indexStart) {
+                            indexStart = indexEnd
+                        }
+                        hadHighLine = true
+                        var clickTopicSpan: ClickTopicSpan? = null
+                        if (textView != null) {
+                            clickTopicSpan = textView.getCustomClickTopicSpan(context, listTopic[i], color, spanTopicCallBack!!)
+                        }
+                        if (clickTopicSpan == null) {
+                            clickTopicSpan = ClickTopicSpan(context, listTopic[i], color, spanTopicCallBack)
+                        }
+                        spannableString.setSpan(clickTopicSpan, mathStart, if (indexEnd == lenght) lenght else matchEnd, Spanned.SPAN_MARK_POINT)
                     }
-                }
-            }
-            if (index > 0) {
-                map.put(index.toString() + "", index.toString() + "")
-                val mathStart = index - 1
-                val indexEnd = index + listTopic[i].topicName.length
-                val hadAt = "#" == content.substring(mathStart, index) && "#" == content.substring(indexEnd, indexEnd + 1)
-                val matchEnd = indexEnd + 1
-                if (hadAt && (matchEnd <= lenght || indexEnd == lenght)) {
-                    if (indexEnd > indexStart) {
-                        indexStart = indexEnd
-                    }
-                    hadHighLine = true
-                    var clickTopicSpan: ClickTopicSpan? = null
-                    if (textView != null) {
-                        clickTopicSpan = textView.getCustomClickTopicSpan(context, listTopic[i], color, spanTopicCallBack!!)
-                    }
-                    if (clickTopicSpan == null) {
-                        clickTopicSpan = ClickTopicSpan(context, listTopic[i], color, spanTopicCallBack)
-                    }
-                    spannableString.setSpan(clickTopicSpan, mathStart, if (indexEnd == lenght) lenght else matchEnd, Spanned.SPAN_MARK_POINT)
-                }
+                } else
+                    break
             }
             i++
+            indexStart = 0
         }
         if (clickable && hadHighLine)
             textView!!.setMovementMethod(LinkMovementMethod.getInstance())
